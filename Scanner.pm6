@@ -81,7 +81,7 @@ class Scanner {
         self!addToken(T_STAR);
       }
       when '=' {
-        # XXX: Probably not the cleansed way to do it
+        # XXX: Probably not the cleanest way to do it
         self!addToken(self!match('=') ?? T_EQUAL_EQUAL !! T_EQUAL);
       }
       when '!' {
