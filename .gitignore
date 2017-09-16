@@ -36,4 +36,6 @@ inc/
 /pm_to_blib
 /*.zip
 
+# Perl 6
+.precomp
 

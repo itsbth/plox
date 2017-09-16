@@ -13,10 +13,10 @@ enum BinOpType <
 constant TokenToBinOp = :{
   (T_EQUAL_EQUAL) => BINOP_EQ,
   (T_BANG_EQUAL) => BINOP_NE,
-  (T_GT) => BINOP_GT,
-  (T_GE) => BINOP_GE,
-  (T_LT) => BINOP_LT,
-  (T_LE) => BINOP_LE,
+  (T_GREATER) => BINOP_GT,
+  (T_GREATER_EQUAL) => BINOP_GE,
+  (T_LESS) => BINOP_LT,
+  (T_LESS_EQUAL) => BINOP_LE,
   (T_PLUS) => BINOP_ADD,
   (T_MINUS) => BINOP_SUB,
   (T_STAR) => BINOP_MUL,
@@ -109,8 +109,21 @@ class Parser {
   }
 
   method !primary() {
-    if self!match(T_NUMBER) {
-      return Literal.new(value => self!previous.literal);
+    if self!match(T_NUMBER | T_STRING) {
+      return Literal.new :value(self!previous.literal);
+    }
+    if self!match(T_TRUE) {
+      return Literal.new :value(True);
+    }
+    if self!match(T_FALSE) {
+      return Literal.new :value(False);
+    }
+    if self!match(T_NIL) {
+      return Literal.new :value(Nil);
+    }
+    if self!match(T_LEFT_PAREN) {
+      return self!expression;
+      LEAVE self!consume(T_RIGHT_PAREN);
     }
   }
 
@@ -121,6 +134,13 @@ class Parser {
       return True;
     }
     return False;
+  }
+
+  method !consume(TokenType $type) {
+    if self!check($type) {
+      return self!advance;
+    }
+    die "Expected $type at $(self!peek.position), found $(self!peek.token)";
   }
   
   method !check(TokenType $type) {

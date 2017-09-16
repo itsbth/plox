@@ -46,6 +46,7 @@ class Scanner {
       $!start = $!current;
       self!scanToken();
     }
+    self!addToken(T_EOF);
     return @!tokens;
   }
 
