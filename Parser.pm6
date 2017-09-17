@@ -23,7 +23,7 @@ constant TokenToBinOp = :{
   (T_SLASH) => BINOP_DIV,
 };
 
-class BinOp is Expr {
+class BinOp does Expr {
   has Expr $.left is readonly;
   has Expr $.right is readonly;
   has BinOpType $.op is readonly;
@@ -36,12 +36,12 @@ constant TokenToUnOp = :{
   (T_BANG) => UNOP_NOT,
 };
 
-class UnOp is Expr {
+class UnOp does Expr {
   has Expr $.right is readonly;
   has UnOpType $.op is readonly;
 }
 
-class Literal is Expr {
+class Literal does Expr {
   has Any $.value is readonly;
 }
 
