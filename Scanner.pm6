@@ -102,6 +102,9 @@ class Scanner {
       when '"' {
         self!string();
       }
+      when ';' {
+        self!addToken(T_SEMICOLON);
+      }
       when /\d/ {
         self!number();
       }

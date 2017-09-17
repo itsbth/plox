@@ -45,12 +45,28 @@ class Literal is Expr {
   has Any $.value is readonly;
 }
 
+class Statement {}
+
+class PrintStatement is Statement {
+  has Expr $.expr is readonly;
+}
+
 class Parser {
   has Token @.tokens is readonly;
   has Int $!current = 0;
 
   method parse() {
-    return self!expression();
+    return self!statement;
+  }
+
+  method !statement() {
+    if self!match(T_PRINT) {
+      my $expr = self!expression;
+      my $print = PrintStatement.new(:$expr);
+      self!consume(T_SEMICOLON);
+      return $print;
+    }
+    return self!expression;
   }
 
   method !expression() {
