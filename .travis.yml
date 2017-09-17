@@ -1,3 +1,6 @@
 language: perl6
 perl6:
   - latest
+cache:
+  directories:
+    - /home/travis/.rakudobrew/
