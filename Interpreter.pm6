@@ -9,7 +9,7 @@ class Interpreter {
     return $lit.value;
   }
 
-  multi sub binop(BINOP_ADD, Num $a, Num $b) {
+  multi sub binop(BINOP_ADD, Numeric $a, Numeric $b) {
     return $a + $b;
   }
 
@@ -17,7 +17,7 @@ class Interpreter {
     return $a ~ $b;
   }
 
-  multi sub binop(BINOP_SUB, Num $a, Num $b) {
+  multi sub binop(BINOP_SUB, Numeric $a, Numeric $b) {
     return $a - $b;
   }
 }
