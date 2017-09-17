@@ -33,6 +33,22 @@ class Interpreter {
     return $a / $b;
   }
 
+  multi sub binop(BINOP_GT, Numeric $a, Numeric $b) {
+    return $a > $b;
+  }
+
+  multi sub binop(BINOP_GE, Numeric $a, Numeric $b) {
+    return $a >= $b;
+  }
+
+  multi sub binop(BINOP_LT, Numeric $a, Numeric $b) {
+    return $a < $b;
+  }
+
+  multi sub binop(BINOP_LE, Numeric $a, Numeric $b) {
+    return $a <= $b;
+  }
+
   multi sub unop(UNOP_NEGATE, Numeric $a) {
     return -$a;
   }
