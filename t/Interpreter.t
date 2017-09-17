@@ -4,14 +4,21 @@ use Test;
 use Parser;
 use Interpreter;
 
-plan 1;
+sub test-binop(BinOpType $op, $a, $b, $expected) {
+  my $ast = BinOp.new(
+    :$op,
+    :left(Literal.new :value($a)),
+    :right(Literal.new :value($b))
+  );
+  my $interp = Interpreter.new;
+  is $interp.evaluate($ast), $expected, "$op with $a and $b should be $expected";
+}
 
-my $ast = BinOp.new(
-  :op(BINOP_ADD),
-  :left(Literal.new :value(1.0)),
-  :right(Literal.new :value(1.0))
-);
-my $interp = Interpreter.new;
-ok $interp.evaluate($ast) eq 2, "should evaluate simple expression";
+plan 4;
+
+test-binop BINOP_ADD, 1, 2, 3;
+test-binop BINOP_SUB, 2, 1, 1;
+test-binop BINOP_MUL, 2, 3, 6;
+test-binop BINOP_DIV, 6, 3, 2;
 
 done-testing;
