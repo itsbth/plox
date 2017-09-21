@@ -204,11 +204,11 @@ class Parser {
     return ExpressionStatement.new(:$expr);
   }
 
-  method !expression() {
+  method !expression() returns Expr {
     return self!assignment;
   }
 
-  method !assignment() {
+  method !assignment() returns Expr {
     my $lhs = self!or;
     if self!match(T_EQUAL) {
       die "Left hand side of assignment must be an lvalue at $(self!peek.position)" if not is-lvalue($lhs);
@@ -218,7 +218,7 @@ class Parser {
     return $lhs;
   }
 
-  method !or() {
+  method !or() returns Expr {
     my $lhs = self!and;
     while self!match(T_OR) {
       my $rhs = self!and;
@@ -227,7 +227,7 @@ class Parser {
     return $lhs;
   }
 
-  method !and() {
+  method !and() returns Expr {
     my $lhs = self!equality;
     while self!match(T_AND) {
       my $rhs = self!equality;
@@ -236,7 +236,7 @@ class Parser {
     return $lhs;
   }
 
-  method !equality() {
+  method !equality() returns Expr {
     my $lhs = self!comparison();
     while self!match(T_EQUAL_EQUAL | T_BANG_EQUAL) {
       my $op = TokenToBinOp{self!previous.token};
@@ -246,7 +246,7 @@ class Parser {
     return $lhs;
   }
 
-  method !comparison() {
+  method !comparison() returns Expr {
     my $lhs = self!addition();
     while self!match(T_LESS | T_LESS_EQUAL | T_GREATER | T_GREATER_EQUAL) {
       my $op = TokenToBinOp{self!previous.token};
@@ -256,7 +256,7 @@ class Parser {
     return $lhs;
   }
 
-  method !addition() {
+  method !addition() returns Expr {
     my $lhs = self!multiplication();
     while self!match(T_PLUS | T_MINUS) {
       my $op = TokenToBinOp{self!previous.token};
@@ -266,7 +266,7 @@ class Parser {
     return $lhs;
   }
 
-  method !multiplication() {
+  method !multiplication() returns Expr {
     my $lhs = self!unary();
     while self!match(T_STAR | T_SLASH) {
       my $op = TokenToBinOp{self!previous.token};
@@ -276,7 +276,7 @@ class Parser {
     return $lhs;
   }
 
-  method !unary() {
+  method !unary() returns Expr {
     if self!match(T_MINUS | T_BANG) {
       my $op = TokenToUnOp{self!previous.token};
       my $rhs = self!call;
@@ -285,7 +285,7 @@ class Parser {
     return self!call;
   }
 
-  method !call() {
+  method !call() returns Expr {
     my $lhs = self!primary;
     if self!match(T_LEFT_PAREN) {
       my @args;
@@ -300,7 +300,7 @@ class Parser {
     return $lhs;
   }
 
-  method !primary() {
+  method !primary() returns Expr {
     if self!match(T_NUMBER | T_STRING) {
       return Literal.new :value(self!previous.literal);
     }
@@ -317,8 +317,9 @@ class Parser {
       return Variable.new :name(self!previous.lexeme);
     }
     if self!match(T_LEFT_PAREN) {
-      return self!expression;
-      LEAVE self!consume(T_RIGHT_PAREN);
+      my $expr = self!expression;
+      self!consume(T_RIGHT_PAREN);
+      return $expr;
     }
     die "$(self!peek.token) found while looking for expression at $(self!peek.position)";
   }
