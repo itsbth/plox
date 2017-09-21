@@ -1,8 +1,8 @@
 use Scanner;
 
-class Expr {
-  
-}
+class Node {}
+
+class Expr is Node {}
 
 enum BinOpType <
   BINOP_ADD BINOP_SUB BINOP_MUL BINOP_DIV
@@ -29,6 +29,19 @@ class BinOp is Expr {
   has BinOpType $.op is readonly;
 }
 
+enum LogicalType <LOGICAL_OR LOGICAL_AND>;
+
+constant TokenToLogical = :{
+  (T_OR) => LOGICAL_OR,
+  (T_AND) => LOGICAL_AND,
+};
+
+class Logical is Expr {
+  has Expr $.left is readonly;
+  has Expr $.right is readonly;
+  has LogicalType $.op is readonly;
+}
+
 enum UnOpType <UNOP_NEGATE UNOP_NOT>;
 
 constant TokenToUnOp = :{
@@ -45,10 +58,58 @@ class Literal is Expr {
   has Any $.value is readonly;
 }
 
-class Statement {}
+class Variable is Expr {
+  has Str $.name is readonly;
+}
+
+class Assignment is Expr {
+  has Variable $.target is readonly;
+  has Expr $.value is readonly;
+}
+
+class Call is Expr {
+  has Expr $.func is readonly;
+  has Expr @.args is readonly;
+}
+
+class Statement is Node {}
+
+class ExpressionStatement is Statement {
+  has $.expr is readonly;
+}
 
 class PrintStatement is Statement {
   has Expr $.expr is readonly;
+}
+
+class VarStatement is Statement {
+  has Str $.name is readonly;
+  has Expr $.init is readonly;
+}
+
+class FunStatement is Statement {
+  has Str $.name is readonly;
+  has Str @.bindings is readonly;
+  has Statement @.body is readonly;
+}
+
+class ReturnStatement is Statement {
+  has Expr $.expr is readonly;
+}
+
+class Block is Statement {
+  has Statement @.statements is readonly;
+}
+
+class IfStatement is Statement {
+  has Expr $.cond is readonly;
+  has Statement $.if-true is readonly;
+  has Statement $.if-false is readonly;
+}
+
+class WhileStatement is Statement {
+  has Expr $.cond is readonly;
+  has Statement $.body is readonly;
 }
 
 class Parser {
@@ -56,6 +117,20 @@ class Parser {
   has Int $!current = 0;
 
   method parse() {
+    return do while not self!isAtEnd and self!peek.token != T_EOF {
+      self!declaration
+    };
+  }
+
+  # PARSER
+
+  method !declaration() {
+    if self!match(T_VAR) {
+      return self!parse-var;
+    }
+    if self!match(T_FUN) {
+      return self!parse-fun;
+    }
     return self!statement;
   }
 
@@ -66,18 +141,104 @@ class Parser {
       self!consume(T_SEMICOLON);
       return $print;
     }
-    return self!expression;
+    if self!match(T_IF) {
+      self!consume(T_LEFT_PAREN);
+      my $cond = self!expression;
+      self!consume(T_RIGHT_PAREN);
+      my $if-true = self!statement;
+      my Statement $if-false;
+      $if-false = self!statement if self!match(T_ELSE);
+      return IfStatement.new(:$cond, :$if-true, :$if-false);
+    }
+    if self!match(T_WHILE) {
+      self!consume(T_LEFT_PAREN);
+      my $cond = self!expression;
+      self!consume(T_RIGHT_PAREN);
+      my $body = self!statement;
+      return WhileStatement.new(:$cond, :$body);
+    }
+    if self!match(T_FOR) {
+      self!consume(T_LEFT_PAREN);
+      my $init;
+      my $cond;
+      my $inc;
+      my $body;
+      if self!match(T_VAR) {
+        $init = self!parse-var;
+      } elsif not self!match(T_SEMICOLON) {
+        $init = ExpressionStatement.new(:expr(self!expression));
+        self!consume(T_SEMICOLON);
+      }
+      $cond = self!expression;
+      self!consume(T_SEMICOLON);
+      if not self!match(T_RIGHT_PAREN) {
+        $inc = ExpressionStatement.new(:expr(self!expression));
+        self!consume(T_RIGHT_PAREN);
+      }
+      $body = self!statement;
+      if $inc {
+        if not $body ~~ Block {
+          $body = Block.new :statements($body);
+        }
+        $body.statements.push($inc);
+      }
+      my $loop = WhileStatement.new(:$cond, :$body);
+      if $init {
+        $loop = Block.new :statements($init, $loop);
+      }
+      return $loop;
+    }
+    if self!match(T_LEFT_BRACE) {
+      my @statements = do while not self!match(T_RIGHT_BRACE) {
+        self!declaration;
+      }
+      return Block.new(:@statements);
+    }
+    if self!match(T_RETURN) {
+      my $expr = self!expression;
+      self!consume(T_SEMICOLON);
+      return ReturnStatement.new(:$expr);
+    }
+    my $expr = self!expression;
+    self!consume(T_SEMICOLON);
+    return ExpressionStatement.new(:$expr);
   }
 
   method !expression() {
-    return self!equality();
+    return self!assignment;
+  }
+
+  method !assignment() {
+    my $lhs = self!or;
+    if self!match(T_EQUAL) {
+      die "Left hand side of assignment must be an lvalue at $(self!peek.position)" if not is-lvalue($lhs);
+      my $rhs = self!expression;
+      return Assignment.new(:target($lhs), :value($rhs));
+    }
+    return $lhs;
+  }
+
+  method !or() {
+    my $lhs = self!and;
+    while self!match(T_OR) {
+      my $rhs = self!and;
+      $lhs = Logical.new(:left($lhs), :right($rhs), :op(LOGICAL_OR));
+    }
+    return $lhs;
+  }
+
+  method !and() {
+    my $lhs = self!equality;
+    while self!match(T_AND) {
+      my $rhs = self!equality;
+      $lhs = Logical.new(:left($lhs), :right($rhs), :op(LOGICAL_AND));
+    }
+    return $lhs;
   }
 
   method !equality() {
     my $lhs = self!comparison();
     while self!match(T_EQUAL_EQUAL | T_BANG_EQUAL) {
-      self!previous.say;
-      TokenToBinOp.say;
       my $op = TokenToBinOp{self!previous.token};
       my $rhs = self!comparison();
       $lhs = BinOp.new(left => $lhs, right => $rhs, op => $op);
@@ -87,7 +248,7 @@ class Parser {
 
   method !comparison() {
     my $lhs = self!addition();
-    while self!match(T_PLUS | T_MINUS) {
+    while self!match(T_LESS | T_LESS_EQUAL | T_GREATER | T_GREATER_EQUAL) {
       my $op = TokenToBinOp{self!previous.token};
       my $rhs = self!addition();
       $lhs = BinOp.new(left => $lhs, right => $rhs, op => $op);
@@ -118,10 +279,25 @@ class Parser {
   method !unary() {
     if self!match(T_MINUS | T_BANG) {
       my $op = TokenToUnOp{self!previous.token};
-      my $rhs = self!primary;
+      my $rhs = self!call;
       return UnOp.new(op => $op, right => $rhs);
     }
-    return self!primary;
+    return self!call;
+  }
+
+  method !call() {
+    my $lhs = self!primary;
+    if self!match(T_LEFT_PAREN) {
+      my @args;
+      if not self!match(T_RIGHT_PAREN) {
+        repeat {
+          @args.push(self!expression);
+        } while self!match(T_COMMA);
+        self!consume(T_RIGHT_PAREN);
+      }
+      return Call.new(:func($lhs), :@args);
+    }
+    return $lhs;
   }
 
   method !primary() {
@@ -137,11 +313,50 @@ class Parser {
     if self!match(T_NIL) {
       return Literal.new :value(Nil);
     }
+    if self!match(T_IDENTIFIER) {
+      return Variable.new :name(self!previous.lexeme);
+    }
     if self!match(T_LEFT_PAREN) {
       return self!expression;
       LEAVE self!consume(T_RIGHT_PAREN);
     }
+    die "$(self!peek.token) found while looking for expression at $(self!peek.position)";
   }
+
+  # PARSER HELPERS
+  # Most expect the first token to already have been consumed
+
+  method !parse-var() {
+    self!consume(T_IDENTIFIER);
+    my $name = self!previous.lexeme;
+    my $init = self!match(T_EQUAL) ?? self!expression !! Literal.new(:value(Nil));
+    self!consume(T_SEMICOLON);
+    return VarStatement.new(:$name, :$init);
+  }
+
+  method !parse-fun() {
+      # next if not self!match(T_IDENTIFIER); # anonymous / expression function, skip
+      self!consume(T_IDENTIFIER);
+      my $name = self!previous.lexeme;
+      self!consume(T_LEFT_PAREN);
+      my @bindings;
+      if not self!match(T_RIGHT_PAREN) {
+        repeat {
+          self!consume(T_IDENTIFIER);
+          @bindings.push(self!previous.lexeme);
+        } while self!match(T_COMMA);
+        self!consume(T_RIGHT_PAREN);
+      }
+      self!consume(T_LEFT_BRACE);
+      my @body;
+      while not self!match(T_RIGHT_BRACE) {
+        @body.push(self!declaration);
+      }
+      return FunStatement.new(:$name, :@bindings, :@body);
+  }
+
+
+  # TOKEN STREAM HELPERS
 
   method !match(TokenType $type) {
     if self!isAtEnd() { return False;  }
@@ -178,5 +393,11 @@ class Parser {
 
   method !isAtEnd() {
     return $!current >= @.tokens.elems;
+  }
+
+  # MISC HELPERS
+
+  sub is-lvalue(Expr $e) {
+    return $e ~~ Variable;
   }
 }

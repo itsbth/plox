@@ -111,14 +111,14 @@ class Scanner {
       when /<:L>/ {
         self!identifier();
       }
-      when ' ' | '\t' {
+      when ' ' | "\t" {
         # do nothing
       }
-      when '\n' {
+      when "\n" {
         $!line += 1;
       }
       default {
-        die "Unexpected token $_ (at $!current)";
+        die "Unexpected token $_ [$($_.ord)] (at $!current)";
       }
     }
   }

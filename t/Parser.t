@@ -6,7 +6,7 @@ use Parser;
 
 sub test-parse(@tokens, $expected) {
   my $parser = Parser.new(:@tokens);
-  is-deeply $parser.parse, $expected, "should parse token stream";
+  is-deeply $parser.parse[0], $expected, "should parse token stream";
 }
 
 sub tok(TokenType $token, $literal = Nil) {
@@ -15,7 +15,7 @@ sub tok(TokenType $token, $literal = Nil) {
 
 plan 2;
 
-test-parse (tok(T_NUMBER, 1), tok(T_PLUS), tok(T_NUMBER, 2), tok(T_EOF)), BinOp.new(
+test-parse (tok(T_NUMBER, 1), tok(T_PLUS), tok(T_NUMBER, 2), tok(T_SEMICOLON), tok(T_EOF)), BinOp.new(
   :op(BINOP_ADD),
   :left(Literal.new :value(1)),
   :right(Literal.new :value(2))
