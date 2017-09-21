@@ -15,10 +15,12 @@ sub tok(TokenType $token, $literal = Nil) {
 
 plan 2;
 
-test-parse (tok(T_NUMBER, 1), tok(T_PLUS), tok(T_NUMBER, 2), tok(T_SEMICOLON), tok(T_EOF)), BinOp.new(
-  :op(BINOP_ADD),
-  :left(Literal.new :value(1)),
-  :right(Literal.new :value(2))
+test-parse (tok(T_NUMBER, 1), tok(T_PLUS), tok(T_NUMBER, 2), tok(T_SEMICOLON), tok(T_EOF)), ExpressionStatement.new(
+  expr => BinOp.new(
+    :op(BINOP_ADD),
+    :left(Literal.new :value(1)),
+    :right(Literal.new :value(2))
+  )
 );
 
 test-parse (tok(T_PRINT), tok(T_STRING, "Hello, World!"), tok(T_SEMICOLON), tok(T_EOF)), PrintStatement.new(
