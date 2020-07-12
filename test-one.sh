@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if rg -q '// Error' "$1" || ! rg -q '// expect:' "$1"; then
+if grep -q '// Error' "$1" || ! grep -q '// expect:' "$1"; then
   echo "1..0 # Skipped: Either no supported tests or one or more unsupported tests found"
   exit
 fi
