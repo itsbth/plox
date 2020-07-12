@@ -95,7 +95,7 @@ class Scanner {
       }
       when '/' {
         when self!match('/') {
-          self!advance() while not self!isAtEnd() and self!peek() ne '\n';
+          self!advance() while not self!isAtEnd() and self!peek() ne "\n";
         }
         self!addToken(T_SLASH); 
       }

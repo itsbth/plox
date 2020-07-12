@@ -169,8 +169,12 @@ class Parser {
         $init = ExpressionStatement.new(:expr(self!expression));
         self!consume(T_SEMICOLON);
       }
-      $cond = self!expression;
-      self!consume(T_SEMICOLON);
+      if not self!match(T_SEMICOLON) {
+        $cond = self!expression;
+        self!consume(T_SEMICOLON);
+      } else {
+        $cond = Literal.new(:val(True));
+      }
       if not self!match(T_RIGHT_PAREN) {
         $inc = ExpressionStatement.new(:expr(self!expression));
         self!consume(T_RIGHT_PAREN);
@@ -186,7 +190,7 @@ class Parser {
       if $init {
         $loop = Block.new :statements($init, $loop);
       }
-      return $loop;
+      return Block.new :statements($loop);
     }
     if self!match(T_LEFT_BRACE) {
       my @statements = do while not self!match(T_RIGHT_BRACE) {
