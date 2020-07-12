@@ -4,3 +4,6 @@ perl6:
 cache:
   directories:
     - /home/travis/.rakudobrew/
+script:
+  -	PERL6LIB=lib prove --ext .t --ext .t6 -v -r --exec=perl6 t/
+  - git clone https://github.com/munificent/craftinginterpreters.git ci && prove -re ./test-one.sh --ext '.lox' ci/test/
